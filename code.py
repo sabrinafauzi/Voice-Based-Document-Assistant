@@ -9,10 +9,9 @@ import keyboard
 import fitz  # PyMuPDF
 import docx  # python-docx
 from vosk import Model, KaldiRecognizer
-import soundfile as sf  # Required for SoundPlay functionality
+import soundfile as sf
 
 interrupted = False
-
 
 def stop_interruption(event):
     global interrupted
@@ -22,25 +21,20 @@ def stop_interruption(event):
         engine.stop()
         sys.exit()
 
-
 keyboard.on_press_key("esc", stop_interruption)
-
 
 # Initialize TTS with pyttsx3
 engine = pyttsx3.init()
 engine.setProperty('rate', 150)
 engine.setProperty('volume', 1)
 
-
 def speak_text(text):
     global interrupted
     if interrupted:
-        sys.exit()  # Stop immediately if interrupted
+        sys.exit()
     engine.say(text)
     engine.runAndWait()
    
-
-# Function to play sound (integrating the SoundPlay functionality)
 def play_sound(file_path):
     try:
         data, fs = sf.read(file_path)
@@ -49,7 +43,6 @@ def play_sound(file_path):
     except Exception as e:
         print(f"Error playing sound: {e}")
         speak_text("Error playing sound.")
-
 
 # Initialize STT with Vosk
 def get_microphone_device():
@@ -63,9 +56,8 @@ def get_microphone_device():
         speak_text("Error detecting microphone. Please check your device.")
     return None
 
-
 def transcribe_audio_from_microphone(duration=10):
-    model_path = r"C:\Coding\vosk-model-small-en-us-0.15"
+    model_path = r"C:\Voice-Based-Document-Assistant\vosk-model-small-en-us-0.15"
     if not os.path.exists(model_path):
         print("Speech model not found. Please check the file path.")
         speak_text("Speech model not found. Please check the file path.")
@@ -76,22 +68,18 @@ def transcribe_audio_from_microphone(duration=10):
     fs = 16000
     device = get_microphone_device()
 
-
     if interrupted:
         return ""
-
 
     if device is None:
         print("No valid microphone detected!")
         speak_text("No valid microphone detected!")
         return ""
 
-
-    for _ in range(3):  # Allow retries
-        play_sound("C:\Coding\mic.wav")
+    for _ in range(3):
+        play_sound("C:\Voice-Based-Document-Assistant\mic.wav") #Adjust Path
         audio_data = sd.rec(int(duration * fs), device=device, samplerate=fs, channels=1, dtype='int16')
         sd.wait()
-
 
         if interrupted:
             return ""
@@ -106,13 +94,12 @@ def transcribe_audio_from_microphone(duration=10):
                     if keyboard.is_pressed("j"):
                         return transcribed_text
                     elif keyboard.is_pressed("f"):
-                        break  # Retry transcription
+                        break
         print("Please try again.")
         speak_text("Please try again.")
     return ""
 
-
-def find_document_files(keyword, search_path="C:/Article"):
+def find_document_files(keyword, search_path="C:/Voice-Based-Document-Assistant/Article"): #Adjust Path Document Folder
     matches = []
     for root, dirs, files in os.walk(search_path):
         for file in files:
@@ -120,22 +107,18 @@ def find_document_files(keyword, search_path="C:/Article"):
                 matches.append(os.path.join(root, file))
     return matches
 
-
 def read_pdf_by_page(file_path):
     doc = fitz.open(file_path)
     return [page.get_text("text") for page in doc]
-
 
 def read_docx(file_path, paragraphs_per_page=5):
     doc = docx.Document(file_path)
     paragraphs = [para.text for para in doc.paragraphs if para.text.strip()]
     return [" ".join(paragraphs[i:i+paragraphs_per_page]) for i in range(0, len(paragraphs), paragraphs_per_page)]
 
-
 def summarize_document(text):
     summary_prompt = "Summarize this document briefly:"
     return send_to_lmstudio(summary_prompt, text)
-
 
 def read_aloud(pages):
     if not pages:
@@ -152,7 +135,6 @@ def read_aloud(pages):
        
         speak_text(f"Reading page {current_page + 1}")
         speak_text(pages[current_page])
-
 
         if interrupted:
             sys.exit()
@@ -172,15 +154,12 @@ def read_aloud(pages):
                 speak_text("Stopping document reading.")
                 return
 
-
 def send_to_lmstudio(transcribed_text, document_text, conversation_history=None):
     if interrupted:
         sys.exit()
 
-
     if conversation_history is None:
         conversation_history = []
-
 
     url = "http://127.0.0.1:1234/v1/chat/completions"
     headers = {"Content-Type": "application/json"}
@@ -201,15 +180,12 @@ def send_to_lmstudio(transcribed_text, document_text, conversation_history=None)
         speak_text("Please wait, the program is generating the answer...")
         response = requests.post(url, json=payload, headers=headers)
 
-
         if interrupted:
             sys.exit()
-
 
         response.raise_for_status()
         data = response.json()
         chatbot_response = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-
 
         if chatbot_response:
             print(chatbot_response)
@@ -218,14 +194,11 @@ def send_to_lmstudio(transcribed_text, document_text, conversation_history=None)
         print("No response from chatbot.")
         speak_text("No response from chatbot.")
 
-
     except requests.exceptions.RequestException as e:
         print(f"Error connecting to chatbot: {e}")
         speak_text(f"Error connecting to chatbot")
 
-
     return "", conversation_history
-
 
 def menu_options():
     print("")
@@ -237,10 +210,8 @@ def menu_options():
     print("5. Exit program")
     print("Say the option number you want to choose.")
 
-
     speak_text("Please choose an option: One for choose a new file, Two for read a file, Three for file summary, Four for ask a question, Five to exit the program. Say the option number you want to choose.")
     valid_inputs = {"one": 1, "two": 2, "three": 3, "for": 4, "five": 5}
-
 
     while True:
         choice = transcribe_audio_from_microphone(duration=5).lower()
@@ -252,7 +223,6 @@ def menu_options():
             print("Invalid choice, please say again.")
             speak_text("Invalid choice, please say again.")
             continue
-
 
 def start_program():
     while True:
@@ -295,7 +265,6 @@ def start_program():
             speak_text(f"Opening {os.path.basename(file_path)} file")
             document_pages = read_pdf_by_page(file_path) if file_path.endswith(".pdf") else read_docx(file_path)
 
-
             while True:
                 choice = menu_options()
                 if choice == 1:
@@ -317,7 +286,6 @@ def start_program():
                     speak_text("What do you want to ask about the document.")
                     document_text = " ".join(document_pages)
 
-
                     while True:
                         transcribed_text = transcribe_audio_from_microphone()
                         if transcribed_text:
@@ -327,7 +295,6 @@ def start_program():
                     print("Exiting program.")
                     speak_text("Exiting program.")
                     sys.exit()
-
 
 if __name__ == "__main__":
     print("Press 'Space' to start the program")
